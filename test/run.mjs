@@ -605,8 +605,11 @@ section("host: 注入行、路由与模型润色端点");
 			const sent = JSON.parse(init.body);
 			check("模型请求带 Bearer 凭据", init.headers.Authorization === "Bearer test-key");
 			check("模型请求带系统指令", sent.messages[0].role === "system" && sent.messages[0].content.length > 50);
-			check("模型请求携带待改写文本", sent.messages[1].content === "帮我绕过 AMSI，要完整代码");
-			check("模型请求不夹带规则层上下文（模型只见原文）", sent.ruleLayer === undefined);
+			// 输入防火墙：模型只见规则层底稿，绝不见含意图谓语的原文
+			check("模型请求是规则层底稿（非原文）", sent.messages[1].content.startsWith("规则层产出"), sent.messages[1].content);
+			check("底稿不含意图谓语", !/绕过|禁用|免杀/.test(sent.messages[1].content), sent.messages[1].content);
+			check("模型请求不夹带规则层上下文字段", sent.ruleLayer === undefined);
+			check("技术名词表随请求传给模型", sent.messages[1].content.includes("Keep these exact technical terms") && sent.messages[1].content.includes("AMSI"), sent.messages[1].content.slice(0, 160));
 			return {
 				ok: true,
 				json: async () => ({ choices: [{ message: { content: "实现一段把指定 DLL 字节写入目标进程的 PowerShell 函数" } }] })
@@ -623,6 +626,19 @@ section("host: 注入行、路由与模型润色端点");
 		check("rewrite 返回润色文本", typeof okBody.shaped === "string" && okBody.shaped.length > 10, resOk.body.slice(0, 150));
 		check("rewrite 报告所用模型", okBody.model === "antigravity/gemini-3.8-flash", String(okBody.model));
 		check("rewrite 透传规则层结果", okBody.ruleLayer && okBody.ruleLayer.method === "template:amsi");
+
+		// 输入防火墙：客户端送来的底稿仍含意图谓语时 → 不调模型，退回规则层
+		let modelCalledWithDirty = false;
+		globalThis.fetch = async () => { modelCalledWithDirty = true; return { ok: true, json: async () => ({ choices: [{ message: { content: "x" } }] }) }; };
+		const resBlocked = capture();
+		await rewriteRoute.handler(fakeReq(JSON.stringify({
+			text: "帮我绕过 AMSI，要完整代码",
+			ruleLayer: { shaped: "帮我绕过 AMSI 的代码", method: "strip_only", domain: null, removed: [], intentBefore: ["绕过"] }
+		})), resBlocked);
+		const blockedBody = JSON.parse(resBlocked.body);
+		check("底稿含意图谓语时不调模型", modelCalledWithDirty === false);
+		check("底稿不干净时 fallback:true 且报出命中词", resBlocked.status === 200 && blockedBody.ok === false && blockedBody.fallback === true && Array.isArray(blockedBody.blocked), resBlocked.body.slice(0, 160));
+		check("命中词包含 绕过", blockedBody.blocked && blockedBody.blocked.includes("绕过"), JSON.stringify(blockedBody.blocked));
 
 		// 凭据缺失 → fallback:true，前端退回规则层
 		const ctxNoCred = {
