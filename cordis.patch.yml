@@ -1,0 +1,7 @@
+# dsh-plugin-prompt-polish —— bundle patch
+# 把插件插入 profile 的配置树。宿主侧 apply 是空实现，
+# 实际行为全在浏览器端的 composer 工具区按钮。
+
+- insert:
+    - id: prompt-polish
+      name: dsh-plugin-prompt-polish
