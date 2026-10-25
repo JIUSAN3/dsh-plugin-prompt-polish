@@ -1,10 +1,18 @@
 {
   "name": "dsh-plugin-prompt-polish",
-  "version": "0.4.0",
-  "description": "Composer button that rewrites the draft in place into a form target models are more likely to accept. Desktop-safe: injects via webServer + index-inject (same path as dsh-whale-widget).",
+  "version": "0.5.0",
+  "description": "DeepSeek Harness composer button that rewrites the draft in place into a form target models accept more readily. Desktop-safe: injects through webServer + webserver/index-inject, the same path dsh-whale-widget uses.",
   "type": "module",
   "main": "lib/index.js",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JIUSAN3/dsh-plugin-prompt-polish.git"
+  },
+  "homepage": "https://github.com/JIUSAN3/dsh-plugin-prompt-polish#readme",
+  "bugs": {
+    "url": "https://github.com/JIUSAN3/dsh-plugin-prompt-polish/issues"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -12,6 +20,9 @@
     "prompt",
     "prompt-engineering"
   ],
+  "scripts": {
+    "test": "node test/run.mjs"
+  },
   "exports": {
     ".": "./lib/index.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
